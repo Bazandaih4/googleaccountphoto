@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Фото для Google Contacts</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f6f8;
+        --panel: #ffffff;
+        --panel-strong: #eceff3;
+        --text: #1f2328;
+        --muted: #64707d;
+        --line: #d9dee5;
+        --accent: #1683d8;
+        --accent-strong: #0b66b2;
+        --danger: #b54848;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, Segoe UI, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: minmax(320px, 1fr) 360px;
+        min-height: 100vh;
+      }
+
+      .stage {
+        display: grid;
+        align-items: center;
+        justify-items: center;
+        padding: 32px;
+        background:
+          linear-gradient(90deg, rgba(31, 35, 40, 0.04) 1px, transparent 1px),
+          linear-gradient(rgba(31, 35, 40, 0.04) 1px, transparent 1px),
+          #e9edf2;
+        background-size: 28px 28px;
+      }
+
+      .preview-wrap {
+        width: min(78vh, 100%);
+        max-width: 760px;
+        aspect-ratio: 1;
+        display: grid;
+      }
+
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+        background: #efefef;
+        border: 1px solid #c9d1dc;
+        box-shadow: 0 18px 50px rgba(31, 35, 40, 0.16);
+        cursor: grab;
+        touch-action: none;
+      }
+
+      canvas.dragging {
+        cursor: grabbing;
+      }
+
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        padding: 28px;
+        border-left: 1px solid var(--line);
+        background: var(--panel);
+      }
+
+      .brand {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.15;
+        letter-spacing: 0;
+      }
+
+      .size-note {
+        color: var(--muted);
+        font: 13px/1.2 Consolas, "Courier New", monospace;
+        white-space: nowrap;
+      }
+
+      .group {
+        display: grid;
+        gap: 10px;
+        padding-top: 6px;
+      }
+
+      label {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      input[type="text"] {
+        width: 100%;
+        height: 44px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--text);
+        outline: none;
+        font: 18px/1 Consolas, "Courier New", monospace;
+      }
+
+      input[type="text"]:focus,
+      input[type="range"]:focus-visible,
+      button:focus-visible {
+        outline: 3px solid rgba(22, 131, 216, 0.2);
+        outline-offset: 2px;
+      }
+
+      .upload {
+        display: grid;
+        gap: 10px;
+      }
+
+      input[type="file"] {
+        width: 100%;
+        padding: 10px;
+        border: 1px dashed #b5bdc8;
+        border-radius: 8px;
+        background: #fafbfc;
+        color: var(--muted);
+      }
+
+      .control-panel {
+        display: grid;
+        gap: 14px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fafbfc;
+      }
+
+      .guide-toggle {
+        min-height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fafbfc;
+      }
+
+      .guide-toggle label {
+        color: var(--text);
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .guide-toggle input {
+        width: 20px;
+        height: 20px;
+        accent-color: var(--accent);
+      }
+
+      .control {
+        display: grid;
+        grid-template-columns: 76px 1fr 58px;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .control output {
+        color: var(--muted);
+        text-align: right;
+        font: 13px/1 Consolas, "Courier New", monospace;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+
+      .button-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .button-row.three {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      button {
+        min-height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        color: var(--text);
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: var(--panel-strong);
+      }
+
+      .primary {
+        min-height: 48px;
+        border-color: var(--accent);
+        background: var(--accent);
+        color: #fff;
+        font-weight: 700;
+      }
+
+      .primary:hover {
+        background: var(--accent-strong);
+      }
+
+      .status {
+        min-height: 20px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .status.error {
+        color: var(--danger);
+      }
+
+      @media (max-width: 900px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+
+        .stage {
+          min-height: 54vh;
+          padding: 18px;
+        }
+
+        .preview-wrap {
+          width: min(92vw, 58vh);
+        }
+
+        .sidebar {
+          border-left: 0;
+          border-top: 1px solid var(--line);
+          padding: 20px;
+        }
+      }
+
+      @media (max-width: 520px) {
+        .brand {
+          display: grid;
+        }
+
+        .control {
+          grid-template-columns: 64px 1fr 48px;
+        }
+
+        .button-row,
+        .button-row.three {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <section class="stage" aria-label="Предпросмотр">
+        <div class="preview-wrap">
+          <canvas id="canvas" width="2560" height="2560"></canvas>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <div class="brand">
+          <h1>Google Contacts</h1>
+          <span class="size-note">2560 x 2560</span>
+        </div>
+
+        <div class="upload">
+          <label for="photoInput">Фото</label>
+          <input id="photoInput" type="file" accept="image/*">
+        </div>
+
+        <div class="group">
+          <label for="groupInput">Группа</label>
+          <input id="groupInput" type="text" value="ПМ-35" maxlength="20" autocomplete="off">
+        </div>
+
+        <div class="guide-toggle">
+          <label for="guideInput">Направляющие лица</label>
+          <input id="guideInput" type="checkbox" checked>
+        </div>
+
+        <div class="control-panel" aria-label="Положение фото">
+          <div class="control">
+            <label for="scaleInput">Масштаб</label>
+            <input id="scaleInput" type="range" min="0.2" max="5" step="0.01" value="1">
+            <output id="scaleOutput">100%</output>
+          </div>
+
+          <div class="control">
+            <label for="xInput">X</label>
+            <input id="xInput" type="range" min="-400" max="400" step="1" value="0">
+            <output id="xOutput">0</output>
+          </div>
+
+          <div class="control">
+            <label for="yInput">Y</label>
+            <input id="yInput" type="range" min="-400" max="400" step="1" value="0">
+            <output id="yOutput">0</output>
+          </div>
+
+          <div class="control">
+            <label for="rotateInput">Поворот</label>
+            <input id="rotateInput" type="range" min="-15" max="15" step="0.1" value="0">
+            <output id="rotateOutput">0°</output>
+          </div>
+        </div>
+
+        <div class="button-row three">
+          <button id="fitButton" type="button">Вписать</button>
+          <button id="centerButton" type="button">Центр</button>
+          <button id="resetButton" type="button">Сброс</button>
+        </div>
+
+        <div class="button-row">
+          <button id="minusButton" type="button">−</button>
+          <button id="plusButton" type="button">+</button>
+        </div>
+
+        <button id="downloadButton" class="primary" type="button">Скачать PNG</button>
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+      </aside>
+    </main>
+
+    <script>
+      const canvas = document.querySelector("#canvas");
+      const ctx = canvas.getContext("2d");
+
+      const photoInput = document.querySelector("#photoInput");
+      const groupInput = document.querySelector("#groupInput");
+      const guideInput = document.querySelector("#guideInput");
+      const scaleInput = document.querySelector("#scaleInput");
+      const xInput = document.querySelector("#xInput");
+      const yInput = document.querySelector("#yInput");
+      const rotateInput = document.querySelector("#rotateInput");
+      const scaleOutput = document.querySelector("#scaleOutput");
+      const xOutput = document.querySelector("#xOutput");
+      const yOutput = document.querySelector("#yOutput");
+      const rotateOutput = document.querySelector("#rotateOutput");
+      const fitButton = document.querySelector("#fitButton");
+      const centerButton = document.querySelector("#centerButton");
+      const resetButton = document.querySelector("#resetButton");
+      const minusButton = document.querySelector("#minusButton");
+      const plusButton = document.querySelector("#plusButton");
+      const downloadButton = document.querySelector("#downloadButton");
+      const status = document.querySelector("#status");
+
+      const SIZE = 2560;
+      const PHOTO = {
+        cx: 1280,
+        cy: 1280,
+        radius: 850,
+        diameter: 1700,
+      };
+      const TEXT = {
+        cx: 1280,
+        radius: 1280,
+        cy: (PHOTO.cy + PHOTO.radius + SIZE) / 2 - 1280,
+        maxAngle: 1.12,
+        maxSize: 330,
+        minSize: 120,
+        tracking: 36,
+        color: "#525252",
+      };
+      const GUIDE = {
+        color: "rgba(22, 131, 216, 0.82)",
+        soft: "rgba(22, 131, 216, 0.26)",
+        text: "rgba(11, 102, 178, 0.92)",
+        headY: 1110,
+        headWidth: 790,
+        headHeight: 1060,
+        eyesY: 1005,
+        chinY: 1640,
+        crownY: 585,
+        shouldersY: 1875,
+      };
+
+      const state = {
+        image: null,
+        baseScale: 1,
+        zoom: 1,
+        offsetX: 0,
+        offsetY: 0,
+        rotation: 0,
+        dragging: false,
+        lastX: 0,
+        lastY: 0,
+      };
+
+      function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
+      }
+
+      function setStatus(message, isError = false) {
+        status.textContent = message;
+        status.classList.toggle("error", isError);
+      }
+
+      function fitImage() {
+        if (!state.image) {
+          return;
+        }
+        state.baseScale = Math.max(
+          PHOTO.diameter / state.image.width,
+          PHOTO.diameter / state.image.height
+        );
+        state.zoom = 1;
+        state.offsetX = 0;
+        state.offsetY = 0;
+        state.rotation = 0;
+        syncControls();
+        draw();
+      }
+
+      function syncControls() {
+        scaleInput.value = state.zoom.toFixed(2);
+        xInput.value = Math.round(state.offsetX);
+        yInput.value = Math.round(state.offsetY);
+        rotateInput.value = state.rotation.toFixed(1);
+        scaleOutput.textContent = `${Math.round(state.zoom * 100)}%`;
+        xOutput.textContent = `${Math.round(state.offsetX)}`;
+        yOutput.textContent = `${Math.round(state.offsetY)}`;
+        rotateOutput.textContent = `${Number(state.rotation.toFixed(1))}°`;
+      }
+
+      function drawBackground() {
+        ctx.fillStyle = "#EFEFEF";
+        ctx.fillRect(0, 0, SIZE, SIZE);
+
+        ctx.beginPath();
+        ctx.arc(SIZE / 2, SIZE / 2, SIZE / 2, 0, Math.PI * 2);
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fill();
+      }
+
+      function drawPhoto() {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(PHOTO.cx, PHOTO.cy, PHOTO.radius, 0, Math.PI * 2);
+        ctx.clip();
+
+        if (state.image) {
+          const scale = state.baseScale * state.zoom;
+          ctx.translate(PHOTO.cx + state.offsetX, PHOTO.cy + state.offsetY);
+          ctx.rotate((state.rotation * Math.PI) / 180);
+          ctx.scale(scale, scale);
+          ctx.drawImage(state.image, -state.image.width / 2, -state.image.height / 2);
+        } else {
+          ctx.fillStyle = "#F4F6F8";
+          ctx.fillRect(PHOTO.cx - PHOTO.radius, PHOTO.cy - PHOTO.radius, PHOTO.diameter, PHOTO.diameter);
+          ctx.strokeStyle = "#D5DAE1";
+          ctx.lineWidth = 10;
+          ctx.setLineDash([34, 32]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = "#8B96A3";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.font = '110px Consolas, "Courier New", monospace';
+          ctx.fillText("ФОТО", PHOTO.cx, PHOTO.cy);
+        }
+
+        ctx.restore();
+      }
+
+      function drawGuideLabel(text, x, y) {
+        ctx.save();
+        ctx.font = '44px Segoe UI, Arial, sans-serif';
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = GUIDE.text;
+        ctx.fillText(text, x, y);
+        ctx.restore();
+      }
+
+      function drawGuides() {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(PHOTO.cx, PHOTO.cy, PHOTO.radius, 0, Math.PI * 2);
+        ctx.clip();
+
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        ctx.strokeStyle = GUIDE.soft;
+        ctx.lineWidth = 8;
+        ctx.setLineDash([26, 24]);
+        ctx.beginPath();
+        ctx.moveTo(PHOTO.cx, PHOTO.cy - PHOTO.radius + 80);
+        ctx.lineTo(PHOTO.cx, PHOTO.cy + PHOTO.radius - 80);
+        ctx.stroke();
+
+        ctx.strokeStyle = GUIDE.color;
+        ctx.lineWidth = 7;
+        ctx.setLineDash([32, 28]);
+        ctx.beginPath();
+        ctx.ellipse(
+          PHOTO.cx,
+          GUIDE.headY,
+          GUIDE.headWidth / 2,
+          GUIDE.headHeight / 2,
+          0,
+          0,
+          Math.PI * 2
+        );
+        ctx.stroke();
+
+        ctx.setLineDash([38, 28]);
+        ctx.beginPath();
+        ctx.moveTo(PHOTO.cx - 510, GUIDE.eyesY);
+        ctx.lineTo(PHOTO.cx + 510, GUIDE.eyesY);
+        ctx.stroke();
+
+        ctx.strokeStyle = GUIDE.soft;
+        ctx.lineWidth = 6;
+        ctx.setLineDash([24, 24]);
+
+        ctx.beginPath();
+        ctx.moveTo(PHOTO.cx - 430, GUIDE.crownY);
+        ctx.lineTo(PHOTO.cx + 430, GUIDE.crownY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(PHOTO.cx - 380, GUIDE.chinY);
+        ctx.lineTo(PHOTO.cx + 380, GUIDE.chinY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(PHOTO.cx - 620, GUIDE.shouldersY);
+        ctx.bezierCurveTo(
+          PHOTO.cx - 310,
+          GUIDE.shouldersY - 70,
+          PHOTO.cx + 310,
+          GUIDE.shouldersY - 70,
+          PHOTO.cx + 620,
+          GUIDE.shouldersY
+        );
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        drawGuideLabel("глаза", PHOTO.cx + 455, GUIDE.eyesY);
+        drawGuideLabel("подбородок", PHOTO.cx + 320, GUIDE.chinY);
+      }
+
+      function measureCurvedText(text, fontSize) {
+        ctx.save();
+        ctx.font = `${fontSize}px Consolas, "Courier New", monospace`;
+        let width = 0;
+        const chars = Array.from(text);
+        for (const char of chars) {
+          width += ctx.measureText(char).width;
+        }
+        width += Math.max(chars.length - 1, 0) * TEXT.tracking * (fontSize / TEXT.maxSize);
+        ctx.restore();
+        return width;
+      }
+
+      function getTextSize(text) {
+        const width = measureCurvedText(text, TEXT.maxSize);
+        const angle = width / TEXT.radius;
+        if (angle <= TEXT.maxAngle) {
+          return TEXT.maxSize;
+        }
+        return clamp(TEXT.maxSize * (TEXT.maxAngle / angle), TEXT.minSize, TEXT.maxSize);
+      }
+
+      function drawCurvedText(rawText) {
+        const text = rawText.trim() || " ";
+        const fontSize = getTextSize(text);
+
+        ctx.save();
+        ctx.fillStyle = TEXT.color;
+        ctx.font = `${fontSize}px Consolas, "Courier New", monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        const chars = Array.from(text);
+        const tracking = TEXT.tracking * (fontSize / TEXT.maxSize);
+        const widths = chars.map((char) => ctx.measureText(char).width);
+        const totalWidth =
+          widths.reduce((sum, width) => sum + width, 0) +
+          Math.max(chars.length - 1, 0) * tracking;
+        const startAngle = Math.PI / 2 + totalWidth / TEXT.radius / 2;
+        let cursor = 0;
+
+        for (let index = 0; index < chars.length; index += 1) {
+          const angle = startAngle - (cursor + widths[index] / 2) / TEXT.radius;
+          const x = TEXT.cx + Math.cos(angle) * TEXT.radius;
+          const y = TEXT.cy + Math.sin(angle) * TEXT.radius;
+
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(angle - Math.PI / 2);
+          ctx.fillText(chars[index], 0, 0);
+          ctx.restore();
+
+          cursor += widths[index] + tracking;
+        }
+
+        ctx.restore();
+      }
+
+      function draw(showGuides = guideInput.checked) {
+        ctx.clearRect(0, 0, SIZE, SIZE);
+        drawBackground();
+        drawPhoto();
+        if (showGuides) {
+          drawGuides();
+        }
+        drawCurvedText(groupInput.value);
+      }
+
+      function canvasPoint(event) {
+        const rect = canvas.getBoundingClientRect();
+        const scale = SIZE / rect.width;
+        return {
+          x: (event.clientX - rect.left) * scale,
+          y: (event.clientY - rect.top) * scale,
+        };
+      }
+
+      function isInsidePhoto(point) {
+        return Math.hypot(point.x - PHOTO.cx, point.y - PHOTO.cy) <= PHOTO.radius;
+      }
+
+      photoInput.addEventListener("change", () => {
+        const file = photoInput.files?.[0];
+        if (!file) {
+          return;
+        }
+
+        const image = new Image();
+        image.onload = () => {
+          URL.revokeObjectURL(image.src);
+          state.image = image;
+          fitImage();
+          setStatus(file.name);
+        };
+        image.onerror = () => {
+          setStatus("Не удалось открыть файл", true);
+        };
+        image.src = URL.createObjectURL(file);
+      });
+
+      groupInput.addEventListener("input", () => draw());
+      guideInput.addEventListener("change", () => draw());
+
+      scaleInput.addEventListener("input", () => {
+        state.zoom = Number(scaleInput.value);
+        syncControls();
+        draw();
+      });
+
+      xInput.addEventListener("input", () => {
+        state.offsetX = Number(xInput.value);
+        syncControls();
+        draw();
+      });
+
+      yInput.addEventListener("input", () => {
+        state.offsetY = Number(yInput.value);
+        syncControls();
+        draw();
+      });
+
+      rotateInput.addEventListener("input", () => {
+        state.rotation = Number(rotateInput.value);
+        syncControls();
+        draw();
+      });
+
+      fitButton.addEventListener("click", fitImage);
+
+      centerButton.addEventListener("click", () => {
+        state.offsetX = 0;
+        state.offsetY = 0;
+        syncControls();
+        draw();
+      });
+
+      resetButton.addEventListener("click", () => {
+        state.image = null;
+        photoInput.value = "";
+        state.baseScale = 1;
+        state.zoom = 1;
+        state.offsetX = 0;
+        state.offsetY = 0;
+        state.rotation = 0;
+        syncControls();
+        setStatus("");
+        draw();
+      });
+
+      minusButton.addEventListener("click", () => {
+        state.zoom = clamp(state.zoom - 0.05, Number(scaleInput.min), Number(scaleInput.max));
+        syncControls();
+        draw();
+      });
+
+      plusButton.addEventListener("click", () => {
+        state.zoom = clamp(state.zoom + 0.05, Number(scaleInput.min), Number(scaleInput.max));
+        syncControls();
+        draw();
+      });
+
+      canvas.addEventListener("pointerdown", (event) => {
+        if (!state.image) {
+          return;
+        }
+        const point = canvasPoint(event);
+        if (!isInsidePhoto(point)) {
+          return;
+        }
+        state.dragging = true;
+        state.lastX = point.x;
+        state.lastY = point.y;
+        canvas.classList.add("dragging");
+        canvas.setPointerCapture(event.pointerId);
+      });
+
+      canvas.addEventListener("pointermove", (event) => {
+        if (!state.dragging) {
+          return;
+        }
+        const point = canvasPoint(event);
+        state.offsetX = clamp(state.offsetX + point.x - state.lastX, -400, 400);
+        state.offsetY = clamp(state.offsetY + point.y - state.lastY, -400, 400);
+        state.lastX = point.x;
+        state.lastY = point.y;
+        syncControls();
+        draw();
+      });
+
+      function stopDrag(event) {
+        if (!state.dragging) {
+          return;
+        }
+        state.dragging = false;
+        canvas.classList.remove("dragging");
+        if (event?.pointerId !== undefined) {
+          canvas.releasePointerCapture(event.pointerId);
+        }
+      }
+
+      canvas.addEventListener("pointerup", stopDrag);
+      canvas.addEventListener("pointercancel", stopDrag);
+      canvas.addEventListener("pointerleave", stopDrag);
+
+      canvas.addEventListener(
+        "wheel",
+        (event) => {
+          if (!state.image) {
+            return;
+          }
+          event.preventDefault();
+          const direction = event.deltaY > 0 ? -1 : 1;
+          state.zoom = clamp(
+            state.zoom + direction * 0.05,
+            Number(scaleInput.min),
+            Number(scaleInput.max)
+          );
+          syncControls();
+          draw();
+        },
+        { passive: false }
+      );
+
+      downloadButton.addEventListener("click", () => {
+        draw(false);
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            setStatus("Не удалось создать PNG", true);
+            draw();
+            return;
+          }
+          const group = groupInput.value.trim() || "group";
+          const safeGroup = group.replace(/[\\/:*?"<>|]+/g, "-").slice(0, 40);
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = `google-contact-${safeGroup}.png`;
+          link.click();
+          URL.revokeObjectURL(link.href);
+          setStatus("PNG готов");
+          draw();
+        }, "image/png");
+      });
+
+      syncControls();
+      draw();
+    </script>
+  </body>
+</html>
