@@ -388,8 +388,8 @@
         radius: 1280,
         cy: (PHOTO.cy + PHOTO.radius + SIZE) / 2 - 1280,
         maxAngle: 1.12,
-        maxSize: 330,
-        minSize: 120,
+        maxSize: 360,
+        minSize: 130,
         tracking: 36,
         color: "#525252",
       };
@@ -577,7 +577,7 @@
 
       function measureCurvedText(text, fontSize) {
         ctx.save();
-        ctx.font = `${fontSize}px Consolas, "Courier New", monospace`;
+        ctx.font = `bold ${fontSize}px Consolas, "Courier New", monospace`;
         let width = 0;
         const chars = Array.from(text);
         for (const char of chars) {
@@ -603,7 +603,7 @@
 
         ctx.save();
         ctx.fillStyle = TEXT.color;
-        ctx.font = `${fontSize}px Consolas, "Courier New", monospace`;
+        ctx.font = `bold ${fontSize}px Consolas, "Courier New", monospace`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
